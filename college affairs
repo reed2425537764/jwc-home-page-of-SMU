@@ -1,0 +1,101 @@
+import requests
+from bs4 import BeautifulSoup
+from prettytable import PrettyTable
+import webbrowser
+
+
+url = 'http://jwc.shmtu.edu.cn/Information/MoreInfo.aspx?type=2'
+head = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.79 Saf'
+                      'ari/537.36 Maxthon/5.2.3.4000'}
+
+def get_response(page_num, keys):
+
+
+    if page_num != 1:
+        postdata = {
+            '__EVENTTARGET': 'ctl00$CP1$MoreInfoMC1$ucPagerBottom$ddlPageSelector',
+            '__EVENTARGUMENT': '',
+            '__LASTFOCUS': '',
+            '__VIEWSTATE': keys[0],
+            '__VIEWSTATEGENERATOR': '6CD503E4',
+            '__VIEWSTATEENCRYPTED': '',
+            '__EVENTVALIDATION': keys[1],
+            'ctl00$CP1$MoreInfoMC1$ucSearch$ddlInformationTye': '2',
+            'ctl00$CP1$MoreInfoMC1$ucSearch$ddlInformationCategory': '',
+            'ctl00$CP1$MoreInfoMC1$ucSearch$txtTitle': '',
+            'ctl00$CP1$MoreInfoMC1$ucPagerBottom$ddlPageSelector': '{0} / 141'.format(page_num)
+        }
+        r = requests.post(url=url, data=postdata, headers=head)
+        #print(postdata)
+        #print(r.text)
+    else:
+        r = requests.get(url='http://jwc.shmtu.edu.cn/Information/MoreInfo.aspx?type=2', headers=head)
+
+    return r.content
+
+def get_keys(html):
+    soup = BeautifulSoup(html, 'lxml')
+    VIEWSTATE = soup.select_one('#__VIEWSTATE')['value']
+    # print(VIEWSTATE)
+    '''VIEWSTATEGENERATOR = soup.select_one('#__VIEWSTATEGENERATOR')['value']
+    print(VIEWSTATEGENERATOR)'''
+    EVENTVALIDATION = soup.select_one('#__EVENTVALIDATION')['value']
+    # print(EVENTVALIDATION)
+    '''reg = re.compile("href=\"javascript:__doPostBack\('(.*?)',", re.S)
+    EVENTTARGET = re.findall(reg, r.text)[0]
+    print(EVENTTARGET)'''
+    return [VIEWSTATE, EVENTVALIDATION]
+
+def get_detail(html):
+    soup = BeautifulSoup(html, 'lxml')
+    news_all = soup.find(id='main')
+    news_all = news_all.find('td', class_='tdMCViewList')
+    # print(news_all)
+    tr_list = news_all.find_all('tr')[1:]
+
+    count = 0
+    url_dict = {}
+    detail_dict = {}
+
+    for each in tr_list:
+        count += 1
+        td_list = each.find_all('td')
+        detail_dict['info_type'] = td_list[0].text.strip()
+        detail_dict['info_type2'] = td_list[2].text.strip()
+        detail_dict['title'] = td_list[4].text.strip()
+        url = td_list[4].find('a')['href'].replace('..', 'http://jwc.shmtu.edu.cn')
+        url_dict[str(count)] = url
+        detail_dict['num'] = td_list[6].text.strip()
+        detail_dict['tim'] = td_list[8].text.strip()
+        detail_dict['url'] = url_dict
+        print_table(detail_dict, count)
+
+    return url_dict
+
+def print_table(data, count):
+    table.add_row([data['info_type'], data['info_type2'], data['title'], data['num'], data['tim'], count])
+
+
+
+if __name__ == '__main__':
+    page_num = 1
+    table = PrettyTable(['信息类型', '信息类别', '标题', '点击次数', '发布时间', '序号'])
+    response = get_response(page_num,None)
+
+    url_dict = get_detail(response)
+    print(table)
+    while (1):
+        print('---------**如需翻页请输入c/C**---------')
+        print('--------**如需退出请输入q/Q**--------')
+        num = input('-------**输入序号查看具体内容**-------:   ')
+        if num.lower() == 'q':
+            break
+        if num.isnumeric():
+            webbrowser.open(url_dict[num])
+        else:
+            table = PrettyTable(['信息类型', '信息类别', '标题', '点击次数', '发布时间', '序号'])
+            keys = get_keys(response)
+            page_num += 1
+            response = get_response(page_num, keys)
+            url_dict = get_detail(response)
+            print(table)
