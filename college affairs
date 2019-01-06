@@ -1,3 +1,4 @@
+···python
 import requests
 from bs4 import BeautifulSoup
 from prettytable import PrettyTable
@@ -98,4 +99,4 @@ if __name__ == '__main__':
             page_num += 1
             response = get_response(page_num, keys)
             url_dict = get_detail(response)
-            print(table)
+            print(table)···
